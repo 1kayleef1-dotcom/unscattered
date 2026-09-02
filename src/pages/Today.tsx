@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mic, Sparkles, Wand2 } from "lucide-react";
+import { Sparkles, Wand2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { Button } from "../components/ui/Button";
 import { RecentEntries } from "../components/braindump/RecentEntries";
+import { MicButton } from "../components/braindump/MicButton";
 import { TodaysFocus } from "../components/tasks/TodaysFocus";
+import { QuickWins } from "../components/tasks/QuickWins";
 
 const STARTER_PROMPTS = [
   "I need to remember…",
@@ -79,7 +81,7 @@ export function Today() {
             <div className="flex items-center gap-3">
               <span className="text-xs text-ink/40">
                 {text.trim().length === 0
-                  ? "Start where you are."
+                  ? "Start where you are. (Press N anytime to jump-start a new one.)"
                   : `${text.trim().length} characters written`}
               </span>
               {savedFlash && (
@@ -89,15 +91,7 @@ export function Today() {
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                title="Voice input — coming soon"
-                aria-label="Voice input — coming soon"
-                disabled
-                className="rounded-full p-2.5 text-ink/30 border border-plum/15 cursor-not-allowed"
-              >
-                <Mic size={16} />
-              </button>
+              <MicButton onTranscript={(chunk) => setText((prev) => (prev ? `${prev} ${chunk}` : chunk))} />
               <Button variant="secondary" onClick={handleAdd} disabled={!text.trim()}>
                 <Sparkles size={16} />
                 Add to brain dump
@@ -115,8 +109,9 @@ export function Today() {
         <div className="lg:col-span-2">
           <RecentEntries entries={recent} title="Recent entries" showViewAll />
         </div>
-        <div>
+        <div className="space-y-6">
           <TodaysFocus />
+          <QuickWins />
         </div>
       </div>
     </div>

@@ -1,11 +1,13 @@
-import { Archive, CheckSquare, Trash2 } from "lucide-react";
+import { Archive, CheckSquare, HelpCircle, Trash2 } from "lucide-react";
 import {
   CATEGORIES,
+  ENERGY_LABELS,
   ESTIMATED_TIME_LABELS,
   URGENCY_ORDER,
   URGENCY_LABELS,
   THOUGHT_TYPE_LABELS,
   type Category,
+  type EnergyLevel,
   type EstimatedTime,
   type ThoughtType,
   type Urgency,
@@ -22,6 +24,7 @@ export interface CandidateCard {
   urgency: Urgency;
   dueDate?: string;
   estimatedTime?: EstimatedTime;
+  energyLevel?: EnergyLevel;
 }
 
 const TYPE_ICON_TONE: Record<ThoughtType, string> = {
@@ -37,11 +40,13 @@ export function ThoughtCard({
   onChange,
   onFinalize,
   onDiscard,
+  onNotSure,
 }: {
   card: CandidateCard;
   onChange: (patch: Partial<CandidateCard>) => void;
   onFinalize: () => void;
   onDiscard: () => void;
+  onNotSure: () => void;
 }) {
   return (
     <div
@@ -55,7 +60,7 @@ export function ThoughtCard({
         className="!border-0 !bg-transparent !px-0 !py-0 text-[15px] leading-snug focus:!bg-transparent"
       />
 
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div>
           <Select
             aria-label="Type"
@@ -101,6 +106,23 @@ export function ThoughtCard({
             ))}
           </Select>
         </div>
+        <div>
+          <Select
+            aria-label="Energy needed"
+            value={card.energyLevel ?? ""}
+            onChange={(e) =>
+              onChange({ energyLevel: (e.target.value || undefined) as EnergyLevel | undefined })
+            }
+            className="!py-1.5 !text-xs"
+          >
+            <option value="">Any energy</option>
+            {Object.entries(ENERGY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -138,6 +160,15 @@ export function ThoughtCard({
             className="rounded-full p-1.5 text-ink/35 hover:bg-rose/10 hover:text-rose"
           >
             <Trash2 size={14} />
+          </button>
+          <button
+            onClick={onNotSure}
+            disabled={!card.text.trim()}
+            title="Save it without deciding the details right now"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-ink/45 hover:bg-plum/10 hover:text-plum disabled:opacity-40"
+          >
+            <HelpCircle size={13} />
+            Not sure yet
           </button>
           {card.type === "task" ? (
             <Button size="sm" variant="primary" onClick={onFinalize} disabled={!card.text.trim()}>

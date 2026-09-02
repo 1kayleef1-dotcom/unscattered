@@ -4,11 +4,15 @@ import { Button } from "../ui/Button";
 import { Input, Label, Select } from "../ui/Field";
 import {
   CATEGORIES,
+  ENERGY_LABELS,
   ESTIMATED_TIME_LABELS,
+  RECURRENCE_LABELS,
   URGENCY_ORDER,
   URGENCY_LABELS,
   type Category,
+  type EnergyLevel,
   type EstimatedTime,
+  type Recurrence,
   type Task,
   type Urgency,
 } from "../../types";
@@ -19,7 +23,19 @@ export interface TaskFormValues {
   urgency: Urgency;
   dueDate?: string;
   estimatedTime?: EstimatedTime;
+  energyLevel?: EnergyLevel;
+  recurrence?: Recurrence;
 }
+
+const EMPTY_VALUES: TaskFormValues = {
+  title: "",
+  category: "Other",
+  urgency: "week",
+  dueDate: undefined,
+  estimatedTime: undefined,
+  energyLevel: undefined,
+  recurrence: "none",
+};
 
 export function TaskFormModal({
   open,
@@ -32,13 +48,7 @@ export function TaskFormModal({
   onSave: (values: TaskFormValues) => void;
   initialTask?: Task;
 }) {
-  const [values, setValues] = useState<TaskFormValues>({
-    title: "",
-    category: "Other",
-    urgency: "week",
-    dueDate: undefined,
-    estimatedTime: undefined,
-  });
+  const [values, setValues] = useState<TaskFormValues>(EMPTY_VALUES);
 
   useEffect(() => {
     if (open) {
@@ -50,8 +60,10 @@ export function TaskFormModal({
               urgency: initialTask.urgency,
               dueDate: initialTask.dueDate,
               estimatedTime: initialTask.estimatedTime,
+              energyLevel: initialTask.energyLevel,
+              recurrence: initialTask.recurrence ?? "none",
             }
-          : { title: "", category: "Other", urgency: "week", dueDate: undefined, estimatedTime: undefined },
+          : EMPTY_VALUES,
       );
     }
   }, [open, initialTask]);
@@ -150,6 +162,43 @@ export function TaskFormModal({
             >
               <option value="">No estimate</option>
               {Object.entries(ESTIMATED_TIME_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="task-energy">Energy needed</Label>
+            <Select
+              id="task-energy"
+              value={values.energyLevel ?? ""}
+              onChange={(e) =>
+                setValues((v) => ({
+                  ...v,
+                  energyLevel: (e.target.value || undefined) as EnergyLevel | undefined,
+                }))
+              }
+            >
+              <option value="">Any energy</option>
+              {Object.entries(ENERGY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="task-recurrence">Repeats</Label>
+            <Select
+              id="task-recurrence"
+              value={values.recurrence ?? "none"}
+              onChange={(e) => setValues((v) => ({ ...v, recurrence: e.target.value as Recurrence }))}
+            >
+              {Object.entries(RECURRENCE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react";
-import { ListChecks, Plus, Search } from "lucide-react";
+import { ListChecks, Plus, Search, Zap } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { CATEGORIES, URGENCY_LABELS, URGENCY_ORDER, type Category, type Task, type Urgency } from "../types";
+import { useToast } from "../context/ToastContext";
+import {
+  CATEGORIES,
+  ENERGY_LABELS,
+  URGENCY_LABELS,
+  URGENCY_ORDER,
+  type Category,
+  type EnergyLevel,
+  type Task,
+  type Urgency,
+} from "../types";
 import { TaskRow } from "../components/tasks/TaskRow";
 import { TaskFormModal, type TaskFormValues } from "../components/tasks/TaskFormModal";
-import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { Input, Select } from "../components/ui/Field";
@@ -16,17 +25,28 @@ const URGENCY_WEIGHT: Record<Urgency, number> = { now: 0, soon: 1, week: 2, late
 const TIME_WEIGHT: Record<string, number> = { "5m": 0, "15m": 1, "30m": 2, "60m+": 3 };
 
 export function Tasks() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTaskComplete, archiveTask, duplicateTask } =
-    useApp();
+  const {
+    tasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    restoreDeletedTask,
+    toggleTaskComplete,
+    archiveTask,
+    restoreTask,
+    duplicateTask,
+  } = useApp();
+  const { showToast } = useToast();
 
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<Category | "all">("all");
+  const [energyFilter, setEnergyFilter] = useState<EnergyLevel | "all">("all");
+  const [quickWinsOnly, setQuickWinsOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("urgency");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
-  const [deleteTarget, setDeleteTarget] = useState<Task | undefined>(undefined);
 
   const visible = tasks.filter((t) => !t.archived);
 
@@ -36,10 +56,10 @@ export function Tasks() {
       list = list.filter((t) => t.completed);
     } else if (urgencyFilter !== "all") {
       list = list.filter((t) => !t.completed && t.urgency === urgencyFilter);
-    } else {
-      // "All" still separates completed to the bottom naturally via sort
     }
     if (categoryFilter !== "all") list = list.filter((t) => t.category === categoryFilter);
+    if (energyFilter !== "all") list = list.filter((t) => t.energyLevel === energyFilter);
+    if (quickWinsOnly) list = list.filter((t) => t.estimatedTime === "5m");
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(q));
@@ -66,7 +86,7 @@ export function Tasks() {
       }
     });
     return sorted;
-  }, [visible, urgencyFilter, categoryFilter, search, sortKey]);
+  }, [visible, urgencyFilter, categoryFilter, energyFilter, quickWinsOnly, search, sortKey]);
 
   const handleSave = (values: TaskFormValues) => {
     if (editingTask) {
@@ -76,6 +96,29 @@ export function Tasks() {
     }
     setFormOpen(false);
     setEditingTask(undefined);
+  };
+
+  const handleToggle = (task: Task) => {
+    toggleTaskComplete(task.id);
+    if (!task.completed && task.recurrence && task.recurrence !== "none") {
+      showToast({ message: `Nice. This repeats ${task.recurrence} — the next one's already on your list.` });
+    }
+  };
+
+  const handleArchive = (task: Task) => {
+    archiveTask(task.id);
+    showToast({
+      message: `"${task.title}" archived.`,
+      onAction: () => restoreTask(task.id),
+    });
+  };
+
+  const handleDelete = (task: Task) => {
+    deleteTask(task.id);
+    showToast({
+      message: `"${task.title}" deleted.`,
+      onAction: () => restoreDeletedTask(task),
+    });
   };
 
   const filterChips: { key: UrgencyFilter; label: string }[] = [
@@ -120,6 +163,37 @@ export function Tasks() {
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink/40 mr-1">
+          Energy
+        </span>
+        {(["all", "low", "medium", "high"] as const).map((level) => (
+          <button
+            key={level}
+            onClick={() => setEnergyFilter(level)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              energyFilter === level
+                ? "bg-plum text-cream"
+                : "bg-white/50 text-ink/55 border border-plum/15 hover:bg-plum/10"
+            }`}
+          >
+            {level === "all" ? "Any" : ENERGY_LABELS[level]}
+          </button>
+        ))}
+        <button
+          onClick={() => setQuickWinsOnly((v) => !v)}
+          className={`ml-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            quickWinsOnly
+              ? "bg-sage text-cream"
+              : "bg-white/50 text-ink/55 border border-sage/30 hover:bg-sage/10"
+          }`}
+          title="Only show tasks estimated at 5 minutes"
+        >
+          <Zap size={12} />
+          Quick wins only
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -175,14 +249,14 @@ export function Tasks() {
             <TaskRow
               key={task.id}
               task={task}
-              onToggle={() => toggleTaskComplete(task.id)}
+              onToggle={() => handleToggle(task)}
               onEdit={() => {
                 setEditingTask(task);
                 setFormOpen(true);
               }}
               onDuplicate={() => duplicateTask(task.id)}
-              onArchive={() => archiveTask(task.id)}
-              onDelete={() => setDeleteTarget(task)}
+              onArchive={() => handleArchive(task)}
+              onDelete={() => handleDelete(task)}
             />
           ))}
         </div>
@@ -196,17 +270,6 @@ export function Tasks() {
         }}
         onSave={handleSave}
         initialTask={editingTask}
-      />
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        title="Delete this task?"
-        message={`"${deleteTarget?.title}" will be permanently removed. This can't be undone.`}
-        onCancel={() => setDeleteTarget(undefined)}
-        onConfirm={() => {
-          if (deleteTarget) deleteTask(deleteTarget.id);
-          setDeleteTarget(undefined);
-        }}
       />
     </div>
   );

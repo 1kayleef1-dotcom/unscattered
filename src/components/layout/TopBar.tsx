@@ -1,5 +1,7 @@
-import { Menu, Moon, Sun } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Download, Menu, Moon, Sun } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { useToast } from "../../context/ToastContext";
 
 const USER_NAME = "Maya";
 
@@ -19,16 +21,49 @@ export function TopBar({
   theme: "light" | "dark";
   onToggleTheme: () => void;
 }) {
-  const { tasks } = useApp();
+  const { tasks, brainDumps, thoughts } = useApp();
+  const { showToast } = useToast();
   const activeTasks = tasks.filter((t) => !t.archived);
   const completed = activeTasks.filter((t) => t.completed).length;
   const total = activeTasks.length;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
 
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+
+  const handleExport = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      brainDumps,
+      thoughts,
+      tasks,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `unscattered-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setMenuOpen(false);
+    showToast({ message: "Your data was downloaded as a JSON file." });
+  };
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-plum/10 bg-paper/80 dark:bg-transparent px-5 py-4 backdrop-blur-sm sm:px-8">
@@ -76,13 +111,36 @@ export function TopBar({
           {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
-        <button
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-plum text-cream font-display text-sm shadow-soft hover:brightness-105"
-          aria-label="Your profile"
-          title={USER_NAME}
-        >
-          {USER_NAME.charAt(0)}
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-plum text-cream font-display text-sm shadow-soft hover:brightness-105"
+            aria-label="Your profile and data"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title={USER_NAME}
+          >
+            {USER_NAME.charAt(0)}
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-lavender/25 bg-cream shadow-paper animate-fade-in"
+            >
+              <div className="px-3.5 py-2.5 text-xs text-ink/40 border-b border-lavender/15">
+                Signed in as {USER_NAME} · stored on this device only
+              </div>
+              <button
+                role="menuitem"
+                onClick={handleExport}
+                className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-ink/80 hover:bg-plum/10"
+              >
+                <Download size={14} />
+                Export my data (.json)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Feather, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckSquare, Feather, Pencil, RotateCcw, Sparkle, Trash2 } from "lucide-react";
 import type { Thought } from "../../types";
 import { Pill } from "../ui/Pill";
 import { Button } from "../ui/Button";
@@ -9,6 +9,8 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+const REST_NUDGE_DAYS = 3;
+
 export function ArchiveThoughtCard({
   thought,
   onUpdate,
@@ -16,6 +18,7 @@ export function ArchiveThoughtCard({
   onToggleArchived,
   onConvertToTask,
   onSetWorryAction,
+  onRevisitWorry,
 }: {
   thought: Thought;
   onUpdate: (text: string) => void;
@@ -23,6 +26,7 @@ export function ArchiveThoughtCard({
   onToggleArchived: () => void;
   onConvertToTask: () => void;
   onSetWorryAction: (action: "task" | "rest") => void;
+  onRevisitWorry: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(thought.text);
@@ -101,11 +105,26 @@ export function ArchiveThoughtCard({
             <Feather size={12} /> Can I take action on this?
           </p>
           {thought.worryAction ? (
-            <p className="text-xs text-ink/55 italic">
-              {thought.worryAction === "task"
-                ? "You chose to make this a task."
-                : "You chose to let this rest for now — that's a valid choice, not avoidance."}
-            </p>
+            <>
+              <p className="text-xs text-ink/55 italic">
+                {thought.worryAction === "task"
+                  ? "You chose to make this a task."
+                  : "You chose to let this rest for now — that's a valid choice, not avoidance."}
+              </p>
+              {thought.worryAction === "rest" &&
+                thought.restedAt &&
+                (Date.now() - new Date(thought.restedAt).getTime()) / 86400000 >= REST_NUDGE_DAYS && (
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-lavender/15 px-3 py-2">
+                    <p className="flex items-center gap-1.5 text-xs text-eggplant">
+                      <Sparkle size={12} className="text-plum" />
+                      It's been a few days — want to look at this again?
+                    </p>
+                    <Button size="sm" variant="ghost" onClick={onRevisitWorry}>
+                      I'll look now
+                    </Button>
+                  </div>
+                )}
+            </>
           ) : (
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={onConvertToTask}>

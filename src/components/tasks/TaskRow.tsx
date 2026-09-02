@@ -1,6 +1,6 @@
-import { Archive, Check, Clock, Copy, Pencil, Trash2 } from "lucide-react";
+import { Archive, BatteryLow, Check, Clock, Copy, Pencil, Repeat, Trash2 } from "lucide-react";
 import type { Task } from "../../types";
-import { ESTIMATED_TIME_LABELS, URGENCY_LABELS } from "../../types";
+import { ENERGY_LABELS, ESTIMATED_TIME_LABELS, URGENCY_LABELS } from "../../types";
 import { Pill, UrgencyPill } from "../ui/Pill";
 import { OverflowMenu } from "../ui/OverflowMenu";
 
@@ -56,11 +56,14 @@ export function TaskRow({
 
       <div className="min-w-0 flex-1">
         <p
-          className={`text-[15px] leading-snug text-ink ${
+          className={`flex items-center gap-1.5 text-[15px] leading-snug text-ink ${
             task.completed ? "line-through decoration-ink/40" : ""
           }`}
         >
-          {task.title}
+          {task.recurrence && task.recurrence !== "none" && (
+            <Repeat size={12} className="shrink-0 text-plum/60" aria-label={`Repeats ${task.recurrence}`} />
+          )}
+          <span className="truncate">{task.title}</span>
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <Pill tone="lavender">{task.category}</Pill>
@@ -75,6 +78,12 @@ export function TaskRow({
             <span className="inline-flex items-center gap-1 text-xs text-ink/40">
               <Clock size={11} />
               {ESTIMATED_TIME_LABELS[task.estimatedTime]}
+            </span>
+          )}
+          {task.energyLevel && (
+            <span className="inline-flex items-center gap-1 text-xs text-ink/40">
+              <BatteryLow size={11} />
+              {ENERGY_LABELS[task.energyLevel]}
             </span>
           )}
         </div>

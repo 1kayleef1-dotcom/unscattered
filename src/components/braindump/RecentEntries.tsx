@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Pencil, Shuffle, Trash2 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { useToast } from "../../context/ToastContext";
 import type { BrainDumpEntry } from "../../types";
 import { EmptyState } from "../ui/EmptyState";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { NotebookPen } from "lucide-react";
 
 function formatDate(iso: string) {
@@ -17,14 +17,22 @@ function formatDate(iso: string) {
 }
 
 function EntryCard({ entry }: { entry: BrainDumpEntry }) {
-  const { updateBrainDump, deleteBrainDump } = useApp();
+  const { updateBrainDump, deleteBrainDump, restoreDeletedBrainDump } = useApp();
+  const { showToast } = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entry.text);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const save = () => {
     if (draft.trim()) updateBrainDump(entry.id, draft.trim());
     setEditing(false);
+  };
+
+  const handleDelete = () => {
+    deleteBrainDump(entry.id);
+    showToast({
+      message: "Entry deleted.",
+      onAction: () => restoreDeletedBrainDump(entry),
+    });
   };
 
   return (
@@ -51,7 +59,7 @@ function EntryCard({ entry }: { entry: BrainDumpEntry }) {
             </button>
           )}
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={handleDelete}
             aria-label="Delete entry"
             className="rounded-full p-1.5 text-ink/40 hover:bg-rose/10 hover:text-rose"
           >
@@ -102,17 +110,6 @@ function EntryCard({ entry }: { entry: BrainDumpEntry }) {
           <Shuffle size={12} /> Sort this entry
         </Link>
       )}
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Delete this entry?"
-        message="This will permanently remove the raw entry. Anything you've already sorted from it stays put."
-        onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => {
-          deleteBrainDump(entry.id);
-          setConfirmDelete(false);
-        }}
-      />
     </div>
   );
 }

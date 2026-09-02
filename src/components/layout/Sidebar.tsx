@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Archive,
@@ -7,11 +7,12 @@ import {
   ListChecks,
   NotebookPen,
   PenLine,
+  RefreshCcw,
   Shuffle,
   Sun,
   X,
 } from "lucide-react";
-import { useApp } from "../../context/AppContext";
+import { useQuickCapture } from "../../context/QuickCaptureContext";
 
 const GROUNDING_PROMPTS = [
   "You do not need to solve everything today.",
@@ -28,23 +29,15 @@ const NAV_ITEMS = [
   { to: "/tasks", label: "Tasks", icon: ListChecks },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/archive", label: "Archive", icon: Archive },
+  { to: "/review", label: "Weekly Review", icon: RefreshCcw },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { addBrainDump } = useApp();
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [text, setText] = useState("");
+  const { open } = useQuickCapture();
   const prompt = useMemo(
     () => GROUNDING_PROMPTS[new Date().getDate() % GROUNDING_PROMPTS.length],
     [],
   );
-
-  const handleQuickSave = () => {
-    if (text.trim().length === 0) return;
-    addBrainDump(text.trim());
-    setText("");
-    setQuickOpen(false);
-  };
 
   return (
     <div className="flex h-full flex-col bg-eggplant text-cream">
@@ -66,8 +59,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="px-4">
         <button
-          onClick={() => setQuickOpen(true)}
+          onClick={open}
           className="flex w-full items-center justify-center gap-2 rounded-full bg-rose px-4 py-2.5 text-sm font-medium text-cream shadow-soft transition-all hover:brightness-105 active:scale-[0.98]"
+          title="New brain dump (⌘/Ctrl K or N)"
         >
           <PenLine size={16} />
           New brain dump
@@ -99,52 +93,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Feather size={15} className="mb-2 text-lavender/60" />
         <p className="font-display text-[15px] leading-snug text-lavender/90">{prompt}</p>
       </div>
-
-      {quickOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setQuickOpen(false);
-          }}
-        >
-          <div className="absolute inset-0 bg-eggplant/50 backdrop-blur-sm" />
-          <div className="relative w-full max-w-lg rounded-3xl bg-cream p-6 shadow-paper animate-fade-in">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-xl text-eggplant">Get it out of your head</h2>
-              <button
-                onClick={() => setQuickOpen(false)}
-                aria-label="Close"
-                className="rounded-full p-1.5 text-ink/50 hover:bg-plum/10"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <textarea
-              autoFocus
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Write freely… tasks, thoughts, worries, ideas, reminders."
-              rows={6}
-              className="w-full resize-none rounded-2xl border border-plum/25 bg-white/70 p-4 text-sm text-ink placeholder:text-ink/40 focus:border-rose/60 focus:bg-white"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setQuickOpen(false)}
-                className="rounded-full px-4 py-2 text-sm font-medium text-eggplant hover:bg-plum/10"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleQuickSave}
-                disabled={!text.trim()}
-                className="rounded-full bg-eggplant px-5 py-2 text-sm font-medium text-cream disabled:opacity-40 hover:bg-eggplant-light"
-              >
-                Save to brain dump
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

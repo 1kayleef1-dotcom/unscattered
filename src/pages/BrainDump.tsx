@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mic, Sparkles, Wand2 } from "lucide-react";
+import { Sparkles, Wand2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { Button } from "../components/ui/Button";
 import { RecentEntries } from "../components/braindump/RecentEntries";
+import { MicButton } from "../components/braindump/MicButton";
 
 export function BrainDump() {
   const { addBrainDump, brainDumps } = useApp();
@@ -57,15 +58,7 @@ export function BrainDump() {
             {text.trim() ? `${text.trim().length} characters` : "Start where you are."}
           </span>
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              title="Voice input — coming soon"
-              aria-label="Voice input — coming soon"
-              disabled
-              className="rounded-full p-2.5 text-ink/30 border border-plum/15 cursor-not-allowed"
-            >
-              <Mic size={16} />
-            </button>
+            <MicButton onTranscript={(chunk) => setText((prev) => (prev ? `${prev} ${chunk}` : chunk))} />
             <Button variant="secondary" onClick={handleAdd} disabled={!text.trim()}>
               <Sparkles size={16} />
               Add entry

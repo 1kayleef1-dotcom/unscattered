@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { CheckCircle2, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
+import { CheckCheck, CheckCircle2, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { buildCandidates } from "../lib/parseThoughts";
 import { makeId } from "../lib/id";
@@ -78,6 +78,7 @@ export function SortThoughts() {
         urgency: card.urgency,
         dueDate: card.dueDate,
         estimatedTime: card.estimatedTime,
+        energyLevel: card.energyLevel,
       });
     } else {
       addThought({
@@ -87,12 +88,34 @@ export function SortThoughts() {
         urgency: card.urgency,
         dueDate: card.dueDate,
         estimatedTime: card.estimatedTime,
+        energyLevel: card.energyLevel,
         brainDumpId: selected?.id,
         worryAction: card.type === "worry" ? null : undefined,
       });
     }
     removeCard(card.localId);
     setHandledCount((n) => n + 1);
+  };
+
+  const finalizeAsUnsure = (card: CandidateCard) => {
+    if (!card.text.trim()) return;
+    addThought({
+      text: card.text.trim(),
+      type: card.type,
+      category: card.category,
+      urgency: card.urgency,
+      dueDate: card.dueDate,
+      estimatedTime: card.estimatedTime,
+      energyLevel: card.energyLevel,
+      brainDumpId: selected?.id,
+      undecided: true,
+    });
+    removeCard(card.localId);
+    setHandledCount((n) => n + 1);
+  };
+
+  const acceptAllSuggestions = () => {
+    cards.forEach((card) => finalizeCard(card));
   };
 
   const allDone = cards.length === 0 && handledCount > 0;
@@ -180,12 +203,23 @@ export function SortThoughts() {
                 <h3 className="font-display text-xl text-eggplant dark:text-cream">
                   Sorted thoughts
                 </h3>
-                <button
-                  onClick={addBlankCard}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-plum hover:text-rose"
-                >
-                  <PlusCircle size={14} /> Add a thought card
-                </button>
+                <div className="flex items-center gap-3">
+                  {cards.length > 1 && (
+                    <button
+                      onClick={acceptAllSuggestions}
+                      title="Save every card as-is, using the suggestions already filled in"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-sage hover:text-eggplant"
+                    >
+                      <CheckCheck size={14} /> Accept all suggestions
+                    </button>
+                  )}
+                  <button
+                    onClick={addBlankCard}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-plum hover:text-rose"
+                  >
+                    <PlusCircle size={14} /> Add a thought card
+                  </button>
+                </div>
               </div>
 
               {cards.length === 0 ? (
@@ -216,6 +250,7 @@ export function SortThoughts() {
                       onChange={(patch) => updateCard(card.localId, patch)}
                       onFinalize={() => finalizeCard(card)}
                       onDiscard={() => removeCard(card.localId)}
+                      onNotSure={() => finalizeAsUnsure(card)}
                     />
                   ))}
                 </div>
