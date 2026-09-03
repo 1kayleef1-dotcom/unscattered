@@ -3,9 +3,9 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Served from https://<owner>.github.io/kayleena/ on GitHub Pages, so
+  // Served from https://<owner>.github.io/unscattered/ on GitHub Pages, so
   // assets need to resolve under that subpath rather than the domain root.
   // Routing itself uses HashRouter, so no basename wiring is needed there.
-  base: '/kayleena/',
+  base: '/unscattered/',
   plugins: [react()],
 })
