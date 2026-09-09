@@ -37,6 +37,22 @@ That URL is not secret — it's fine to share, paste into chat, or hand to anyon
 wire it up. Your API key is the only thing that has to stay private, and it never leaves
 Cloudflare's secret store once you `put` it in step 3.
 
+### No terminal? Use the Cloudflare dashboard instead
+
+Everything above can be done by clicking, in a browser, with `classify-worker.dashboard.js`
+(the same worker, in plain JavaScript so the dashboard's editor accepts it with no build step):
+
+1. dash.cloudflare.com/sign-up (free) → log in.
+2. Left sidebar → **Workers & Pages** → **Create** → **Workers** → give it a name → **Deploy**
+   (this creates a placeholder "Hello World" worker — that's expected).
+3. Click **Edit code**. Delete everything in the editor and paste in the full contents of
+   `classify-worker.dashboard.js`. Click **Deploy** (or **Save and deploy**).
+4. Back on the worker's page → **Settings** tab → **Variables and Secrets** → **Add** →
+   type `ANTHROPIC_API_KEY`, mark it **Secret**, paste your key from console.anthropic.com →
+   **Deploy** to apply it.
+5. The worker's URL is shown at the top of its page — looks like
+   `https://<name>.<your-subdomain>.workers.dev`. That's the URL for the next step.
+
 ## Wiring it into the app
 
 Set the `VITE_CLASSIFY_ENDPOINT` environment variable to that URL wherever the app gets
