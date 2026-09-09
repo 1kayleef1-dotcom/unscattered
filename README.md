@@ -41,12 +41,12 @@ site data resets the app back to the seeded state.
   panel of your top urgent tasks.
 - **Brain Dump** — the full, running history of everything you've written,
   filterable by sorted/unsorted, with inline edit and delete.
-- **Sort Thoughts** — turns a raw brain dump into individual, editable
-  thought cards using simple local text-splitting (new lines, bullets, and
-  sentence breaks) plus light keyword-based suggestions for type, category,
-  and urgency. This is plain rule-based parsing, not AI — and it's framed
-  that way in the UI ("sort suggestions"). Task-type cards save straight to
-  Tasks; everything else archives into the thought library.
+- **Sort Thoughts** — turns a raw, messy brain dump into individual,
+  editable thought cards. Splitting and classification are handled by
+  `src/lib/classifier/` — see "How sorting works" below. Task- and
+  reminder-type cards save straight to Tasks; everything else archives into
+  the thought library. Cards the classifier is genuinely unsure about say
+  so, rather than guessing with false confidence.
 - **Tasks** — your active next steps, with search, category/urgency
   filters, sorting, and quick actions (complete, edit, duplicate, archive,
   delete).
@@ -90,6 +90,39 @@ fatigue, rather than just add more structure:
 - **Data export** — the profile menu in the top bar downloads everything
   as a single JSON file, since this is the only copy of your data.
 
+## How sorting works
+
+`src/lib/classifier/` replaces what used to be a plain keyword-matching
+parser. It's a stack of small, testable signal detectors — not "does this
+text contain the word X," but does it *start* with an imperative verb (and
+its inflections — "call" and "called" both count), does it contain a modal
+phrase ("need to", bare "need", "should", "haven't ... yet"), an emotional
+worry phrase, an explicit date word — combined into a type + a **confidence
+score**, never a flat guess presented as fact:
+
+- **High confidence** cards render compact, with one clear action, so
+  obvious calls don't cost you five fields of attention.
+- **Low confidence** cards say so out loud and lean the UI toward "Not sure
+  yet" instead of a bad guess dressed up as a decision.
+- A task aimed at something abstract ("deal with insurance") gets an
+  optional "make this more actionable?" prompt with next-step verbs to pick
+  from — never an invented rewrite, only what you explicitly choose.
+- A card that closely matches something you already have gets a quiet
+  "you may already have this" note.
+- Dates are only ever set from a date word actually in the text (today,
+  tomorrow, a weekday — self-corrections like "Thursday, actually Friday"
+  resolve to the later one). Nothing is ever invented.
+- Sort Thoughts also supports a fast keyboard flow: focus a card, then
+  `A` accepts, `?` defers to "not sure," `⌫` discards, `↓`/`↑` move to the
+  next card — reviewing a whole brain dump without touching the mouse.
+
+This all runs locally, instantly, with no network call and no API key.
+`src/lib/classifier/aiClassifier.ts` is an **optional** upgrade path to
+real Claude-powered classification via a serverless endpoint you deploy
+yourself (never a client-side API key) — see `server-example/README.md`.
+Unset, the app never attempts a network call; if it's set and a request
+fails for any reason, sorting silently falls back to the local classifier.
+
 ## Tech stack
 
 - React + TypeScript (Vite)
@@ -105,8 +138,11 @@ fatigue, rather than just add more structure:
 ```
 src/
   types/            Shared TypeScript types (Thought, Task, BrainDumpEntry, ...)
-  lib/               Local storage-free helpers: id generation, seed data,
-                     and the brain-dump-splitting/suggestion logic
+  lib/
+    classifier/      Splitting + classification: types.ts, heuristicClassifier.ts
+                     (local, default), aiClassifier.ts (optional remote upgrade),
+                     dedupe.ts, index.ts (orchestrator + fallback + cache)
+    id.ts, seedData.ts
   hooks/             useLocalStorage, useTheme, useSpeechToText
   context/           AppContext (data + actions), ToastContext (undo toasts),
                      QuickCaptureContext (global capture modal + shortcut)
@@ -120,6 +156,8 @@ src/
     tasks/           TaskRow, TaskFormModal, TodaysFocus, QuickWins
   pages/             Today, BrainDump, SortThoughts, Tasks, CalendarPage,
                      ArchivePage, WeeklyReview
+server-example/      A ready-to-deploy serverless endpoint for optional real
+                     AI classification — not part of the built app. See its README.
 ```
 
 ## Design notes

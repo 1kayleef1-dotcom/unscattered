@@ -69,9 +69,16 @@ export function TaskRow({
           <Pill tone="lavender">{task.category}</Pill>
           {!task.completed && <UrgencyPill urgency={task.urgency} label={URGENCY_LABELS[task.urgency]} />}
           {due && (
-            <span className={`text-xs font-medium ${overdue ? "text-rose" : "text-ink/45"}`}>
-              {overdue ? "Overdue · " : "Due "}
-              {due}
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-medium ${overdue ? "text-rose" : "text-ink/45"}`}
+            >
+              {overdue && (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose" aria-hidden="true" />
+                  <span className="sr-only">Past due: </span>
+                </>
+              )}
+              {overdue ? due : `Due ${due}`}
             </span>
           )}
           {task.estimatedTime && (

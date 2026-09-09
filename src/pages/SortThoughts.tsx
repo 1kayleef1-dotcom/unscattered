@@ -1,26 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { CheckCheck, CheckCircle2, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { buildCandidates } from "../lib/parseThoughts";
+import { classifyThoughts, findPossibleDuplicate, type ClassifiedThought } from "../lib/classifier";
 import { makeId } from "../lib/id";
 import { ThoughtCard, type CandidateCard } from "../components/thoughts/ThoughtCard";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Field";
 import { EmptyState } from "../components/ui/EmptyState";
 
-function candidateFromSuggestion(text: string, s: ReturnType<typeof buildCandidates>[number]): CandidateCard {
-  return {
-    localId: makeId("cand"),
-    text,
-    type: s.suggestedType,
-    category: s.suggestedCategory,
-    urgency: s.suggestedUrgency,
-  };
-}
-
 export function SortThoughts() {
-  const { brainDumps, addThought, addTask, markBrainDumpSorted } = useApp();
+  const { brainDumps, thoughts, tasks, addThought, addTask, markBrainDumpSorted } = useApp();
   const location = useLocation();
   const initialId = (location.state as { brainDumpId?: string } | null)?.brainDumpId;
 
@@ -34,44 +24,89 @@ export function SortThoughts() {
   );
   const [cards, setCards] = useState<CandidateCard[]>([]);
   const [handledCount, setHandledCount] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [classifierSource, setClassifierSource] = useState<"ai" | "heuristic" | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const selected = sortable.find((b) => b.id === selectedId);
 
-  const generate = (text: string) => {
-    const suggestions = buildCandidates(text);
-    setCards(suggestions.map((s) => candidateFromSuggestion(s.text, s)));
-    setHandledCount(0);
+  // Recent, non-archived text to check new cards against — catches
+  // re-dumping the same to-do a few days later without blocking the save.
+  const existingItems = useMemo(
+    () => [
+      ...tasks.filter((t) => !t.archived).map((t) => ({ id: t.id, text: t.title })),
+      ...thoughts.filter((t) => !t.archived).map((t) => ({ id: t.id, text: t.text })),
+    ],
+    [tasks, thoughts],
+  );
+
+  const enrichWithDuplicates = (drafts: ClassifiedThought[]): CandidateCard[] =>
+    drafts.map((d) => {
+      const dupId = findPossibleDuplicate(d.text, existingItems);
+      return {
+        ...d,
+        possibleDuplicateText: dupId ? existingItems.find((e) => e.id === dupId)?.text : undefined,
+      };
+    });
+
+  const generate = async (text: string, skipCache = false) => {
+    setIsGenerating(true);
+    try {
+      const { thoughts: drafts, source } = await classifyThoughts(text, { skipCache });
+      setCards(enrichWithDuplicates(drafts));
+      setClassifierSource(source);
+      setHandledCount(0);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {
-    if (selected) generate(selected.text);
+    if (selected) void generate(selected.text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  const updateCard = (localId: string, patch: Partial<CandidateCard>) => {
-    setCards((prev) => prev.map((c) => (c.localId === localId ? { ...c, ...patch } : c)));
+  const updateCard = (id: string, patch: Partial<CandidateCard>) => {
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   };
 
-  const removeCard = (localId: string) => {
-    setCards((prev) => prev.filter((c) => c.localId !== localId));
+  const focusCardAt = (index: number) => {
+    const card = cards[index];
+    if (!card) return;
+    cardRefs.current.get(card.id)?.focus();
+  };
+
+  const removeCard = (id: string, focusNext = true) => {
+    const index = cards.findIndex((c) => c.id === id);
+    setCards((prev) => prev.filter((c) => c.id !== id));
+    if (focusNext) {
+      // Focus whichever card slides into this position next, so keyboard
+      // review can move through the whole list without reaching for the
+      // mouse in between.
+      requestAnimationFrame(() => focusCardAt(index));
+    }
   };
 
   const addBlankCard = () => {
-    setCards((prev) => [
-      ...prev,
-      {
-        localId: makeId("cand"),
-        text: "",
-        type: "note",
-        category: "Other",
-        urgency: "week",
-      },
-    ]);
+    const card: CandidateCard = {
+      id: makeId("cand"),
+      text: "",
+      type: "note",
+      category: "Other",
+      urgency: "week",
+      confidence: 1, // manually authored — nothing to be unsure about
+    };
+    setCards((prev) => [...prev, card]);
   };
 
   const finalizeCard = (card: CandidateCard) => {
     if (!card.text.trim()) return;
-    if (card.type === "task") {
+    // Reminders are actionable too — "remember to bring the forms" is a
+    // task with a different emotional framing, not a fact to file away —
+    // so it goes to Tasks exactly like a task-type card. If it's really
+    // just something to remember rather than do, the Type dropdown above
+    // still lets it be saved as a Note instead.
+    if (card.type === "task" || card.type === "reminder") {
       addTask({
         title: card.text.trim(),
         category: card.category,
@@ -93,7 +128,7 @@ export function SortThoughts() {
         worryAction: card.type === "worry" ? null : undefined,
       });
     }
-    removeCard(card.localId);
+    removeCard(card.id);
     setHandledCount((n) => n + 1);
   };
 
@@ -110,12 +145,43 @@ export function SortThoughts() {
       brainDumpId: selected?.id,
       undecided: true,
     });
-    removeCard(card.localId);
+    removeCard(card.id);
     setHandledCount((n) => n + 1);
   };
 
   const acceptAllSuggestions = () => {
     cards.forEach((card) => finalizeCard(card));
+  };
+
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, card: CandidateCard, index: number) => {
+    // Only fires when the card's own wrapper has focus — not while typing
+    // in one of its inputs — so normal editing is never hijacked.
+    if (e.target !== e.currentTarget) return;
+    switch (e.key) {
+      case "a":
+      case "A":
+      case "Enter":
+        e.preventDefault();
+        finalizeCard(card);
+        break;
+      case "Backspace":
+      case "Delete":
+        e.preventDefault();
+        removeCard(card.id);
+        break;
+      case "?":
+        e.preventDefault();
+        finalizeAsUnsure(card);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        focusCardAt(index + 1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        focusCardAt(index - 1);
+        break;
+    }
   };
 
   const allDone = cards.length === 0 && handledCount > 0;
@@ -163,10 +229,12 @@ export function SortThoughts() {
             </Select>
             {selected && (
               <button
-                onClick={() => generate(selected.text)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-plum hover:text-rose"
+                onClick={() => generate(selected.text, true)}
+                disabled={isGenerating}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-plum hover:text-rose disabled:opacity-50"
               >
-                <RefreshCw size={13} /> Regenerate suggestions
+                <RefreshCw size={13} className={isGenerating ? "animate-spin" : ""} />
+                Regenerate suggestions
               </button>
             )}
           </div>
@@ -222,7 +290,11 @@ export function SortThoughts() {
                 </div>
               </div>
 
-              {cards.length === 0 ? (
+              {isGenerating ? (
+                <div className="rounded-2xl border border-dashed border-plum/25 bg-white/30 p-8 text-center text-sm text-ink/45">
+                  Sorting…
+                </div>
+              ) : cards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-plum/25 bg-white/30 p-8 text-center">
                   {allDone ? (
                     <>
@@ -242,18 +314,32 @@ export function SortThoughts() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {cards.map((card) => (
-                    <ThoughtCard
-                      key={card.localId}
-                      card={card}
-                      onChange={(patch) => updateCard(card.localId, patch)}
-                      onFinalize={() => finalizeCard(card)}
-                      onDiscard={() => removeCard(card.localId)}
-                      onNotSure={() => finalizeAsUnsure(card)}
-                    />
-                  ))}
-                </div>
+                <>
+                  <p className="mb-2 text-xs text-ink/35">
+                    Click a card, then <kbd className="rounded border border-plum/20 px-1">A</kbd> to
+                    accept, <kbd className="rounded border border-plum/20 px-1">?</kbd> for not sure,{" "}
+                    <kbd className="rounded border border-plum/20 px-1">⌫</kbd> to discard,{" "}
+                    <kbd className="rounded border border-plum/20 px-1">↓/↑</kbd> to move between cards.
+                    {classifierSource === "ai" && " Sorted with AI."}
+                  </p>
+                  <div className="space-y-3">
+                    {cards.map((card, index) => (
+                      <ThoughtCard
+                        key={card.id}
+                        ref={(el) => {
+                          if (el) cardRefs.current.set(card.id, el);
+                          else cardRefs.current.delete(card.id);
+                        }}
+                        card={card}
+                        onChange={(patch) => updateCard(card.id, patch)}
+                        onFinalize={() => finalizeCard(card)}
+                        onDiscard={() => removeCard(card.id)}
+                        onNotSure={() => finalizeAsUnsure(card)}
+                        onKeyDown={(e) => handleCardKeyDown(e, card, index)}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </section>
           </div>
