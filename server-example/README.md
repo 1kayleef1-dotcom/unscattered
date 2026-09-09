@@ -22,27 +22,32 @@ A malformed or missing field degrades to a safe default; it never crashes the so
 
 ## Deploying it (Cloudflare Workers — free tier is plenty for personal use)
 
+`wrangler.toml` is already in this folder — nothing to write yourself. Run these from
+**inside `server-example/`** (`cd server-example` from the repo root first):
+
 1. `npm install -g wrangler`
-2. `wrangler login`
-3. `wrangler secret put ANTHROPIC_API_KEY` — paste a key from console.anthropic.com
-4. Add a `wrangler.toml` next to this file:
-   ```toml
-   name = "unscattered-classify"
-   main = "server-example/classify-worker.ts"
-   compatibility_date = "2025-01-01"
-   ```
-5. `wrangler deploy` — prints your endpoint URL, something like
+2. `wrangler login` — opens a browser tab to authorize your Cloudflare account (free to sign
+   up if you don't have one: dash.cloudflare.com/sign-up)
+3. `wrangler secret put ANTHROPIC_API_KEY` — pastes into a prompt, not a file; get a key from
+   console.anthropic.com → API Keys → Create Key
+4. `wrangler deploy` — prints your endpoint URL, something like
    `https://unscattered-classify.<you>.workers.dev`
+
+That URL is not secret — it's fine to share, paste into chat, or hand to anyone helping you
+wire it up. Your API key is the only thing that has to stay private, and it never leaves
+Cloudflare's secret store once you `put` it in step 3.
 
 ## Wiring it into the app
 
 Set the `VITE_CLASSIFY_ENDPOINT` environment variable to that URL wherever the app gets
 **built** (Vite bakes env vars in at build time, not runtime):
 
-- Deploying via the included GitHub Actions workflow (`.github/workflows/deploy.yml`): add
-  `VITE_CLASSIFY_ENDPOINT` as a repository secret, then add
-  `env: { VITE_CLASSIFY_ENDPOINT: ${{ secrets.VITE_CLASSIFY_ENDPOINT }} }` to the "Build"
-  step in that workflow.
+- Deploying via the included GitHub Actions workflow
+  (`.github/workflows/deploy.yml` — already wired to read this secret, nothing to edit):
+  on GitHub, go to the repo → **Settings → Secrets and variables → Actions → New repository
+  secret** → name it `VITE_CLASSIFY_ENDPOINT`, value is your worker's URL → **Add secret**.
+  Push anything (or re-run the workflow manually from the Actions tab) and the next deploy
+  picks it up.
 - Building locally: create `.env.local` with `VITE_CLASSIFY_ENDPOINT=https://...` before
   running `npm run build`.
 

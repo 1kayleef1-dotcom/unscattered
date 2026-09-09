@@ -32,7 +32,14 @@ jobs:
         run: npm ci
 
       - name: Build
+        # VITE_CLASSIFY_ENDPOINT is optional — Vite bakes it in at build
+        # time. Unset (the default, since no such secret exists until you
+        # add one), this resolves to an empty string, which the app treats
+        # exactly like "not configured": no network call, heuristic
+        # classifier only. See server-example/README.md to opt in.
         run: npm run build
+        env:
+          VITE_CLASSIFY_ENDPOINT: ${{ secrets.VITE_CLASSIFY_ENDPOINT }}
 
       - name: Upload build output
         uses: actions/upload-pages-artifact@v3
