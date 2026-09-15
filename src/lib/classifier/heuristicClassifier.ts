@@ -237,9 +237,16 @@ const WORRY_SIGNALS = [
 const IDEA_SIGNALS = [
   "idea:", "idea -", "what if we", "what if i", "maybe i could",
   "maybe we could", "maybe build", "maybe start", "maybe try",
-  "maybe create", "i could start", "i want to start", "someday i",
-  "someday we", "it would be cool", "it'd be cool", "we should build",
-  "we should make", "wouldn't it be", "thinking about starting",
+  "maybe create", "i could start", "someday i", "someday we",
+  "it would be cool", "it'd be cool", "we should build", "we should make",
+  "wouldn't it be", "thinking about starting",
+  // "I want to X" is only idea-shaped when X is a creative/generative verb
+  // — "I want to revamp the logo" is an aspiration, "I want to call the
+  // dentist" is just a task with softer phrasing (and is already caught
+  // by the task-verb signals below, since "call" is a trigger verb).
+  ...["revamp", "redesign", "rebrand", "reimagine", "overhaul", "build", "create", "start", "launch", "try", "explore"].flatMap(
+    (verb) => [`i want to ${verb}`, `i'd like to ${verb}`, `id like to ${verb}`],
+  ),
 ];
 
 const REMINDER_SIGNALS = [
