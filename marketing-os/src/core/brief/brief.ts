@@ -127,7 +127,7 @@ export function buildBrief(ws: Workspace, input: BriefInput): MarketingBrief {
     const q = bestQuote(topPain)
     problemQuote = q ? clause(q.text) : undefined
     problem = `${topPain.theme}: “${problemQuote ?? topPain.theme}”`
-    evidence.push({ kind: 'insight', id: topPain.id, note: `${topPain.frequency} customers describe this pain` })
+    evidence.push({ kind: 'insight', id: topPain.id, note: `${topPain.frequency} customer${topPain.frequency === 1 ? '' : 's'} describe${topPain.frequency === 1 ? 's' : ''} this pain` })
   } else {
     gaps.push(`No customer-sourced pain points for ${segment.name}; problem taken from positioning.`)
   }
@@ -245,7 +245,7 @@ export function buildBrief(ws: Workspace, input: BriefInput): MarketingBrief {
     alternatives,
     competitors,
     proof,
-    positioning: brand.positioning.statement,
+    positioning: messaging?.positioning ?? brand.positioning.statement,
     message,
     cta,
     channel: input.channel,

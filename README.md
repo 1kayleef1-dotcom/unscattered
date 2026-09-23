@@ -9,6 +9,11 @@ account, and no API key required.
 
 > "You can arrive messy, and leave with clarity."
 
+> **Also in this repo:** [`marketing-os/`](marketing-os/README.md) is a separate, self-contained
+> app: an AI marketing operator that diagnoses problems, writes evidence-based copy, runs
+> experiments behind approvals and learns what works. It has its own `package.json` and does
+> not affect this app.
+
 ## Running it locally
 
 Requirements: Node.js 18+ and npm.

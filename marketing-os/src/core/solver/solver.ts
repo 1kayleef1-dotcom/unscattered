@@ -323,7 +323,7 @@ export function openProblem(ws: Workspace, anomaly: Anomaly): Problem {
   const hypotheses = hypothesize(ws, anomaly, steps)
   const problem: Problem = {
     id: newId('prb'),
-    title: `${METRIC_LABELS[anomaly.metric]} ${anomaly.direction === 'drop' ? 'dropped' : 'rose'} ${signedPct(anomaly.change)} on ${anomaly.scopeLabel}`,
+    title: `${METRIC_LABELS[anomaly.metric]} ${anomaly.direction === 'drop' ? 'dropped' : 'rose'} ${pct(Math.abs(anomaly.change), 0)} on ${anomaly.scopeLabel}`,
     kind: 'anomaly',
     status: 'solution_proposed',
     segmentId: anomaly.scope.segmentId ?? ws.brand.segments[0].id,

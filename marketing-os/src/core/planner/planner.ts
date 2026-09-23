@@ -27,6 +27,7 @@ import type {
 import { newId } from '../util/id.ts'
 import { capitalize, clause, stem, words } from '../util/text.ts'
 import { createMessagingModel } from '../messaging/messaging.ts'
+import { themePhrase } from '../brief/brief.ts'
 import { log } from '../ops.ts'
 
 export const GOAL_LABELS: Record<GoalKind, string> = {
@@ -213,7 +214,8 @@ export function createCampaignPlan(wsIn: Workspace, goal: string, opts: { segmen
   const leadProof = segProof.find((p) => p.kind === 'case_study') ?? segProof[0]
 
   // --- Positioning, offer, messaging -----------------------------------------
-  const positioning = `For ${segment.name.toLowerCase()} who ${pains[0] ? `struggle with ${pains[0].theme.toLowerCase()}` : ws.brand.positioning.problem.toLowerCase()}, ${ws.brand.company} is the ${ws.brand.positioning.category} that ${ws.brand.positioning.differentiator.charAt(0).toLowerCase()}${ws.brand.positioning.differentiator.slice(1)}${leadProof ? ` — as ${leadProof.customer ?? 'customers'} found: ${leadProof.metric ? `${leadProof.metric.label} ${leadProof.metric.value}` : leadProof.title}` : ''}.`
+  const proofLine = leadProof ? ` As ${leadProof.customer ?? 'customers'} found: ${leadProof.metric ? `${leadProof.metric.label.toLowerCase()} ${leadProof.metric.value}` : leadProof.title}.` : ''
+  const positioning = `For ${segment.name.toLowerCase()} dealing with ${pains[0] ? themePhrase(pains[0].theme) : ws.brand.positioning.problem.toLowerCase()}, ${ws.brand.company} is the ${ws.brand.positioning.category} built for how they work. ${ws.brand.positioning.differentiator}.${proofLine}`
   const calc = ws.brand.offers.find((o) => o.kind === 'lead_magnet')
   const offerRecommendation = economic && calc
     ? `Lead with ${calc.name} as the entry offer (price/ROI is the leading objection), then ${offer.cta.toLowerCase()}. Keep ${offer.guarantee ? `the guarantee (“${offer.guarantee}”)` : 'risk reversal'} visible.`
@@ -223,6 +225,7 @@ export function createCampaignPlan(wsIn: Workspace, goal: string, opts: { segmen
     name: `${segment.name} · ${GOAL_LABELS[kind]}`,
     segmentId: segment.id,
     offerId: offer.id,
+    positioning,
     coreMessage: `${ws.brand.pillars[0]?.name ?? ws.brand.company}. ${leadProof ? `${leadProof.customer ?? 'Customers'}: ${leadProof.metric ? `${leadProof.metric.label.toLowerCase()} ${leadProof.metric.value}` : leadProof.title}.` : ws.brand.positioning.differentiator}`,
     supportingPoints: ws.brand.pillars.slice(0, 3).map((p) => `${p.name} — ${p.statement}`),
     proofIds: segProof.slice(0, 3).map((p) => p.id),

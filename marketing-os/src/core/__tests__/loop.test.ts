@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createAsset, propagateMessaging, regenerate, repurpose } from '../actions.ts'
 import { advanceDays } from '../agent/agent.ts'
 import { currentVersion, generate } from '../copy/pipeline.ts'
+import { RemoteCopyModel } from '../copy/model.ts'
 import { updateMessaging } from '../messaging/messaging.ts'
 import { decide, execute, rollback } from '../ops.ts'
 import { classifyGoal, createCampaignPlan } from '../planner/planner.ts'
@@ -16,6 +17,13 @@ describe('generation pipeline', () => {
     expect(res.version.chain.measurement.primaryMetric).toBe('qualified_cvr')
     const evidence = res.version.content.sections.flatMap((s) => s.blocks.flatMap((b) => b.evidence ?? []))
     expect(evidence.some((e) => e.kind === 'proof')).toBe(true)
+  })
+
+  it('falls back to the offline composer when the Claude proxy is unreachable, and says so', async () => {
+    const res = await generate(baseWorkspace(), { assetType: 'email_sequence', channel: 'email', segmentId: 'seg_midmarket', goal: 'x' }, new RemoteCopyModel('http://127.0.0.1:9', 2000))
+    expect(res.version.generator).toMatch(/fallback/)
+    expect(res.version.content.sections.length).toBeGreaterThan(2)
+    expect(res.log.join(' ')).toMatch(/fell back/)
   })
 
   it('never overwrites: regenerate and rollback both append versions', async () => {

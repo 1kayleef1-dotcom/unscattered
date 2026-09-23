@@ -565,7 +565,35 @@ function salesBlocks(w: W, section: SectionSpec): CopyBlock[] {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Tone directions the offline composer can honour mechanically. Anything
+ * richer ("more playful", "sound like a founder") needs the Claude writer.
+ */
+export const LOCAL_TONES = ['Shorter', 'More direct', 'More formal', 'Warmer'] as const
+
+function applyTone(content: AssetContent, instructions: string): AssetContent {
+  const i = instructions.toLowerCase()
+  const edit = (key: string, text: string): string => {
+    let t = text
+    if (i.includes('shorter') && !/headline|subject|cta|hook/.test(key)) {
+      t = t.split('\n\n').map((para) => (para.startsWith('Hi ') || para.startsWith('—') ? para : para.split(/(?<=[.!?])\s+/).slice(0, 2).join(' '))).join('\n\n')
+    }
+    if (i.includes('direct')) t = t.replace(/\b(It’s a fair concern\.|Fair\.|Honestly,?|We think|Sound familiar\?)\s*/g, '')
+    if (i.includes('formal')) {
+      t = t.replace(/\bcan’t\b/g, 'cannot').replace(/\bwon’t\b/g, 'will not').replace(/\bdon’t\b/g, 'do not').replace(/\bit’s\b/gi, (m) => (m[0] === 'I' ? 'It is' : 'it is')).replace(/\bhere’s\b/gi, (m) => (m[0] === 'H' ? 'Here is' : 'here is')).replace(/\byou’re\b/g, 'you are').replace(/\bwe’ll\b/gi, 'we will')
+    }
+    if (i.includes('warm') && key === 'body' && t.startsWith('Hi ')) t = t.replace(/\n\n— /, '\n\nThanks for reading,\n— ')
+    return t.trim()
+  }
+  return { sections: content.sections.map((s) => ({ ...s, blocks: s.blocks.map((b) => ({ ...b, text: edit(b.key, b.text) })) })) }
+}
+
 export function writeLocally(input: WriterInput): AssetContent {
+  const content = writeSections(input)
+  return input.instructions ? applyTone(content, input.instructions) : content
+}
+
+function writeSections(input: WriterInput): AssetContent {
   const w = ctx(input)
   const { plan } = input
   const strategy = plan.tags.strategy ?? ''

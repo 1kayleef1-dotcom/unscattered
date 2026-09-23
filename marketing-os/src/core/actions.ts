@@ -9,6 +9,7 @@ import { designExperiment } from './experiments/experiments.ts'
 import { log, requestApproval, upsertAsset } from './ops.ts'
 import type { Asset, AssetType, Channel, GenerationParams, ID, PlannedAsset, Workspace } from './types.ts'
 import { assetsUsing } from './messaging/messaging.ts'
+import { combineCritiques, rulesCritic } from './critic/critic.ts'
 
 const local = new LocalCopyModel()
 
@@ -251,4 +252,20 @@ export async function reindexLanguage(ws: Workspace, model: CopyModel = local): 
     }
   }
   return { ws: { ...ws, language: indexSources(ws.sources, ws.brand.competitors, ws.now) }, note: `Re-indexed ${ws.sources.length} sources with the built-in tagger.` }
+}
+
+/** Re-run the critic(s) on a version. Critique is metadata, so this updates in place. */
+export async function recritique(ws: Workspace, assetId: ID, versionId: ID, model: CopyModel = local): Promise<Workspace> {
+  const asset = ws.assets.find((a) => a.id === assetId)
+  const v = asset?.versions.find((x) => x.id === versionId)
+  if (!asset || !v) return ws
+  const rules = rulesCritic({ content: v.content, brief: v.brief, brand: ws.brand, assetType: asset.type })
+  let llm
+  try {
+    llm = model.critique ? await model.critique({ assetType: asset.type, content: v.content, brief: v.brief, brand: ws.brand }) : undefined
+  } catch {
+    llm = undefined
+  }
+  const critique = combineCritiques(rules, llm, ws.now)
+  return log(upsertAsset(ws, { ...asset, versions: asset.versions.map((x) => (x.id === versionId ? { ...x, critique } : x)) }), 'critique', `Critiqued ${v.label} of “${asset.name}”: ${critique.overall} (${critique.verdict}).`, { type: 'asset', id: asset.id })
 }

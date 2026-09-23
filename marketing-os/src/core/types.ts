@@ -239,6 +239,8 @@ export interface MessagingModel {
   segmentId: ID
   offerId: ID
   version: number
+  /** Segment-specific positioning; falls back to the Brand Brain's statement. */
+  positioning?: string
   coreMessage: string
   supportingPoints: string[]
   proofIds: ID[]

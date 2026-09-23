@@ -69,7 +69,7 @@ export function brandContext(brand: BrandBrain) {
   }
 }
 
-function isContent(value: unknown, plan?: AssetPlan): value is AssetContent {
+export function isContent(value: unknown, plan?: AssetPlan): value is AssetContent {
   if (!value || typeof value !== 'object' || !Array.isArray((value as AssetContent).sections)) return false
   const sections = (value as AssetContent).sections
   if (!sections.every((s) => s && typeof s.id === 'string' && Array.isArray(s.blocks) && s.blocks.every((b) => typeof b.key === 'string' && typeof b.text === 'string'))) return false
@@ -78,7 +78,7 @@ function isContent(value: unknown, plan?: AssetPlan): value is AssetContent {
 }
 
 /** Re-attach plan metadata the model is not trusted to echo back faithfully. */
-function alignToPlan(content: AssetContent, plan: AssetPlan): AssetContent {
+export function alignToPlan(content: AssetContent, plan: AssetPlan): AssetContent {
   return {
     sections: plan.sections.map((spec, i) => {
       const got = content.sections.find((s) => s.id === spec.id) ?? content.sections[i]
@@ -125,19 +125,19 @@ export class RemoteCopyModel implements CopyModel {
   }
 
   async write(req: WriteRequest): Promise<AssetContent> {
-    const out = await this.post<{ content: unknown }>('/api/write', { ...req, brand: brandContext(req.brand) })
+    const out = await this.post<{ content: unknown }>('/api/write', req)
     if (!isContent(out.content, req.plan)) throw new Error('Writer returned malformed content')
     return alignToPlan(out.content, req.plan)
   }
 
   async revise(req: ReviseRequest): Promise<AssetContent> {
-    const out = await this.post<{ content: unknown }>('/api/revise', { ...req, brand: brandContext(req.brand) })
+    const out = await this.post<{ content: unknown }>('/api/revise', req)
     if (!isContent(out.content, req.plan)) throw new Error('Reviser returned malformed content')
     return alignToPlan(out.content, req.plan)
   }
 
   async critique(req: CritiqueRequest): Promise<CritiqueCheck[]> {
-    const out = await this.post<{ checks: CritiqueCheck[] }>('/api/critique', { ...req, brand: brandContext(req.brand) })
+    const out = await this.post<{ checks: CritiqueCheck[] }>('/api/critique', req)
     if (!Array.isArray(out.checks)) throw new Error('Critic returned malformed checks')
     const dims = new Set(['strategic', 'persuasion', 'brand', 'quality'])
     return out.checks

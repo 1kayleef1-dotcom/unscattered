@@ -86,7 +86,7 @@ const CUES: Record<InsightKind, RegExp[]> = {
  */
 const THEMES: { theme: string; pattern: RegExp }[] = [
   { theme: 'Unclear ROI', pattern: /\b(roi|payback|worth (it|the)|justify|return on|pay for itself|value for)\b/i },
-  { theme: 'Price', pattern: /\b(too expensive|expensive|price|pricing|cost(s|ly)?|budget|afford|cheaper)\b/i },
+  { theme: 'Price', pattern: /\b(too expensive|expensive|price|pricing|(?<!have )cost(s|ly)?|budget|afford|cheaper)\b/i },
   { theme: 'Implementation effort', pattern: /\b(implement\w*|switching|migrat\w*|onboard\w*|set ?up|disrupt\w*|rollout|go-live|learning curve|it team|our it)\b/i },
   { theme: 'Manual work & time', pattern: /\b(manual(ly)?|by hand|hours|days|forever|time-consuming|copy(ing)? and past|re-?key\w*|data entry|chasing|chase)\b/i },
   { theme: 'Errors & accuracy', pattern: /\b(mistake|error|duplicate|wrong|accura\w*|typo|double[- ]pa(id|y)|fraud)\b/i },

@@ -137,7 +137,7 @@ function planInner(assetType: AssetType, channel: Channel, ctx: PlanContext, opt
           decisions: [
             { decision: `Structure: ${LANDING_STRATEGY_LABELS[lp.strategy]}`, why: lp.ranked[0].reasons.join('; '), evidence: brief.evidence.slice(0, 4) },
             ...lp.adjustments.map((a) => ({ decision: a.split(':')[0], why: a.split(':').slice(1).join(':').trim(), evidence: [] })),
-            ...(opts.strategy ? [{ decision: 'Strategy chosen by user', why: `Override to ${LANDING_STRATEGY_LABELS[opts.strategy]}; engine’s own pick is shown in alternatives.`, evidence: [] }] : []),
+            ...(opts.strategy ? [{ decision: `Strategy requested: ${LANDING_STRATEGY_LABELS[opts.strategy]}`, why: `Set by the request (${opts.focusTheme ? 'problem solver' : 'user'}), not chosen by the engine; its full ranking is under alternatives.`, evidence: [] }] : []),
           ],
           alternativesConsidered: lp.ranked.slice(1, 4).map((r) => ({ option: LANDING_STRATEGY_LABELS[r.strategy], score: r.score, why: r.reasons.slice(0, 2).join('; ') })),
         },
