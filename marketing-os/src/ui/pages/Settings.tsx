@@ -7,6 +7,7 @@ export function SettingsPage() {
   const { ws, setWs, settings, updateSettings, reset, toast, model } = useWorkspace()
   const [endpoint, setEndpoint] = useState(settings.endpoint)
   const [status, setStatus] = useState<string>('')
+  const [confirmReset, setConfirmReset] = useState(false)
   const file = useRef<HTMLInputElement>(null)
 
   const test = async () => {
@@ -69,7 +70,14 @@ export function SettingsPage() {
       <Card title="Demo data">
         <div className="text-sm text-ink-2">Performance comes from the demo connector — a simulator with hidden ground truth about how each segment responds — so the whole loop can be exercised without ad or email accounts.</div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="danger" onClick={() => { if (confirm('Discard this workspace and rebuild the demo?')) reset() }}>Reset demo workspace</Button>
+          {confirmReset ? (
+            <>
+              <Button variant="danger" onClick={() => { setConfirmReset(false); reset() }}>Yes, discard and rebuild</Button>
+              <Button variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button>
+            </>
+          ) : (
+            <Button variant="danger" onClick={() => setConfirmReset(true)}>Reset demo workspace</Button>
+          )}
           {ws.simulation && <Button onClick={() => setWs({ ...ws, simulation: { ...ws.simulation!, enabled: !ws.simulation!.enabled } })}>{ws.simulation.enabled ? 'Disable' : 'Enable'} demo connector</Button>}
         </div>
       </Card>
